@@ -17,6 +17,7 @@ import {
   Field,
   Spinner,
   Subtitle2,
+  Body1,
 } from "@fluentui/react-components";
 import { BarcodeScannerRegular } from "@fluentui/react-icons";
 import { TextField, usePcfContext } from "@talxis/base-controls";
@@ -46,6 +47,7 @@ export default function BarcodeScanDialog({ itemId, currentProductId, onLinked }
   const context = usePcfContext();
   const [open, setOpen] = useState(false);
   const [ean, setEan] = useState("");
+  const [productBarcode, setProductBarcode] = useState<string | null>(null);
   const eanMessage = eanError(ean);
   const [looking, setLooking] = useState(false);
   const [linking, setLinking] = useState(false);
@@ -63,34 +65,42 @@ export default function BarcodeScanDialog({ itemId, currentProductId, onLinked }
   // already produced a product, a late/stray camera decode (e.g. a misread off a bad frame)
   // must not silently overwrite it.
   const productFoundRef = useRef(false);
+  const lookupRequestRef = useRef(0);
+  const cameraStatus = useBarcodeCamera(videoEl, open, (text) => {
+    if (productFoundRef.current) return;
+    setEan(text);
+    void handleEan(text);
+  });
 
   // A fresh scan starts every time the dialog opens
   useEffect(() => {
     if (open) productFoundRef.current = false;
   }, [open]);
 
-  // The camera (see use-barcode-camera: back camera, skips anything that isn't a plausible barcode,
-  // stops itself); with no camera the manual input below is the fallback either way
-  useBarcodeCamera(videoEl, open, (text) => {
-    if (productFoundRef.current) return;
-    setEan(text);
-    void handleEan(text);
-  });
-
   const handleEan = async (barcode: string) => {
     if (!barcode || eanError(barcode)) return;
+    const requestId = ++lookupRequestRef.current;
     setLooking(true);
+    setImageLoading(false);
     setProduct(null);
+    setProductBarcode(null);
     setImgError(false);
     setPreviewImageUrl(null);
     setImageBytes(null);
     try {
       const result = await OpenFoodFactsService.GetProductByBarcode(barcode);
+      if (requestId !== lookupRequestRef.current) return;
       if (!result.success || !result.data) {
-        toast.error("No product found for this barcode");
+        const message = result.error?.message;
+        toast.error(
+          message && !/404|not found/i.test(message)
+            ? `Lookup failed: ${message}`
+            : "No product found for this barcode"
+        );
         return;
       }
       setProduct(result.data);
+      setProductBarcode(barcode);
       productFoundRef.current = true;
       // The barcode lookup itself is what "Look Up" promises - stop its spinner here and let
       // the (much slower, since it redirects through a different host) image fetch run with
@@ -103,6 +113,7 @@ export default function BarcodeScanDialog({ itemId, currentProductId, onLinked }
         setImageLoading(true);
         try {
           const bytes = await fetchProductImageBytes(result.data.imageUrl);
+          if (requestId !== lookupRequestRef.current) return;
           if (bytes) {
             setImageBytes(bytes);
             setPreviewImageUrl(bytesToDataUrl(bytes, "image/jpeg"));
@@ -110,17 +121,20 @@ export default function BarcodeScanDialog({ itemId, currentProductId, onLinked }
             setImgError(true);
           }
         } catch {
+          if (requestId !== lookupRequestRef.current) return;
           // The image is a nice-to-have on top of the product info already surfaced - fall
           // back to the "no image" state rather than failing the whole lookup over it.
           setImgError(true);
         } finally {
-          setImageLoading(false);
+          if (requestId === lookupRequestRef.current) setImageLoading(false);
         }
       }
     } catch (err) {
-      toast.error("Lookup failed: " + String(err));
+      if (requestId === lookupRequestRef.current) {
+        toast.error("Lookup failed: " + String(err));
+      }
     } finally {
-      setLooking(false);
+      if (requestId === lookupRequestRef.current) setLooking(false);
     }
   };
 
@@ -131,10 +145,10 @@ export default function BarcodeScanDialog({ itemId, currentProductId, onLinked }
   };
 
   const linkProduct = async () => {
-    if (!product || !ean) return;
+    if (!product || !productBarcode) return;
     setLinking(true);
     try {
-      const productId = await ensureProductRecord(ean, product);
+      const productId = await ensureProductRecord(productBarcode, product);
 
       if (!productId) {
         toast.error("Could not resolve a Product record to link");
@@ -144,9 +158,10 @@ export default function BarcodeScanDialog({ itemId, currentProductId, onLinked }
       await serviceResult(Lab_warehouseitemsService.update(itemId, servicePayload({
         "lab_productid@odata.bind": `/lab_products(${productId})`,
         // So the Receive screen finds this item by the same barcode next time
-        lab_barcode: ean,
+        lab_barcode: productBarcode,
       })));
 
+      let imageSaveError: string | undefined;
       if (imageBytes) {
         try {
           // The generated services cover create/update/get but emit nothing for file columns -
@@ -156,19 +171,22 @@ export default function BarcodeScanDialog({ itemId, currentProductId, onLinked }
             "lab_products",
             productId,
             "lab_productimage",
-            `${ean}.jpg`,
+            `${productBarcode}.jpg`,
             imageBytes
           );
           if (!upload.success) {
             throw upload.error ?? new Error("upload rejected");
           }
         } catch (err) {
-          // The product is linked either way - only the photo failed to save, so this is a
-          // warning, not a failure of the whole action.
-          toast.error("Product linked, but its image failed to save: " + String(err));
+          imageSaveError = String(err);
         }
+      } else if (product.imageUrl) {
+        imageSaveError = "The product image could not be loaded";
       }
 
+      if (imageSaveError) {
+        toast.error("Product linked, but its image failed to save: " + imageSaveError);
+      }
       toast.success("Product linked to item");
       onLinked();
       resetAndClose();
@@ -180,9 +198,28 @@ export default function BarcodeScanDialog({ itemId, currentProductId, onLinked }
   };
 
   const resetAndClose = () => {
+    lookupRequestRef.current++;
     setOpen(false);
     setEan("");
     setProduct(null);
+    setProductBarcode(null);
+    setPreviewImageUrl(null);
+    setImageBytes(null);
+    setImgError(false);
+    setImageLoading(false);
+    setLooking(false);
+    productFoundRef.current = false;
+  };
+
+  const updateEan = (value: string) => {
+    setEan(value);
+    if (value === productBarcode) return;
+    lookupRequestRef.current++;
+    setLooking(false);
+    setImageLoading(false);
+    setProduct(null);
+    setProductBarcode(null);
+    setImgError(false);
     setPreviewImageUrl(null);
     setImageBytes(null);
   };
@@ -212,6 +249,12 @@ export default function BarcodeScanDialog({ itemId, currentProductId, onLinked }
                 autoPlay
                 playsInline
               />
+              {cameraStatus === "starting" && (
+                <Body1 className={styles.muted}>Starting the camera...</Body1>
+              )}
+              {cameraStatus === "unavailable" && (
+                <Body1 className={styles.muted}>Camera unavailable. Type the barcode instead.</Body1>
+              )}
 
               {/* The TextField only underlines its error in red; the message itself shows on the Field */}
               <Field
@@ -236,7 +279,7 @@ export default function BarcodeScanDialog({ itemId, currentProductId, onLinked }
                         "data-testid": "scan-ean-input",
                         onChange: (event, value) => {
                           props.onChange?.(event, value);
-                          setEan(value ?? "");
+                          updateEan(value ?? "");
                         },
                       })}
                     />
@@ -275,6 +318,9 @@ export default function BarcodeScanDialog({ itemId, currentProductId, onLinked }
                     <Caption1 className={styles.muted}>
                       {[product.brand, product.quantity].filter(Boolean).join(" · ")}
                     </Caption1>
+                    {imgError && product.imageUrl && (
+                      <Caption1 className={styles.muted}>Image unavailable; you can still link this product.</Caption1>
+                    )}
                   </div>
                 </Card>
               )}
@@ -288,7 +334,7 @@ export default function BarcodeScanDialog({ itemId, currentProductId, onLinked }
                 type="button"
                 appearance="primary"
                 data-testid="scan-link-button"
-                disabled={!product || linking}
+                disabled={!product || !productBarcode || looking || imageLoading || linking}
                 onClick={() => void linkProduct()}
               >
                 {linking ? <Spinner size="tiny" /> : "Link to Item"}
@@ -300,4 +346,3 @@ export default function BarcodeScanDialog({ itemId, currentProductId, onLinked }
     </>
   );
 }
-

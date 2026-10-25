@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <CanvasApp xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Name>lab_warehousepicking</Name>
-  <AppVersion>2026-10-25T22:06:02Z</AppVersion>
+  <AppVersion>2026-10-25T22:21:04Z</AppVersion>
   <Status>Ready</Status>
   <CreatedByClientVersion>0.0.0.0</CreatedByClientVersion>
   <MinClientVersion>0.0.0.0</MinClientVersion>
@@ -28,8 +28,8 @@
   <IsCustomizable>1</IsCustomizable>
   <CodeAppPackageUris>
     <CodeAppPackageUri>/CanvasApps/lab_warehousepicking_CodeAppPackages/index.html_ContentType_text/html</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/lab_warehousepicking_CodeAppPackages/assets/index-DE0tm2mz.js_ContentType_application/javascript</CodeAppPackageUri>
     <CodeAppPackageUri>/CanvasApps/lab_warehousepicking_CodeAppPackages/assets/index-DkhqlnE_.css_ContentType_text/css</CodeAppPackageUri>
-    <CodeAppPackageUri>/CanvasApps/lab_warehousepicking_CodeAppPackages/assets/index-RcXCaF3_.js_ContentType_application/javascript</CodeAppPackageUri>
     <CodeAppPackageUri>/CanvasApps/lab_warehousepicking_CodeAppPackages/fonts/fabric-icons-0-467ee27f.woff_ContentType_font/woff</CodeAppPackageUri>
     <CodeAppPackageUri>/CanvasApps/lab_warehousepicking_CodeAppPackages/fonts/fabric-icons-1-4d521695.woff_ContentType_font/woff</CodeAppPackageUri>
     <CodeAppPackageUri>/CanvasApps/lab_warehousepicking_CodeAppPackages/fonts/fabric-icons-10-c4ded8e4.woff_ContentType_font/woff</CodeAppPackageUri>
