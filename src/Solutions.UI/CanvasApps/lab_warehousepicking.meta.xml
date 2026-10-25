@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <CanvasApp xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Name>lab_warehousepicking</Name>
-  <AppVersion>2026-10-25T20:23:55Z</AppVersion>
+  <AppVersion>2026-10-25T22:06:02Z</AppVersion>
   <Status>Ready</Status>
   <CreatedByClientVersion>0.0.0.0</CreatedByClientVersion>
   <MinClientVersion>0.0.0.0</MinClientVersion>
@@ -14,8 +14,8 @@
   <CommitMessage xsi:nil="true"></CommitMessage>
   <Publisher xsi:nil="true"></Publisher>
   <AuthorizationReferences>[]</AuthorizationReferences>
-  <ConnectionReferences>{}</ConnectionReferences>
-  <DatabaseReferences>{"default.cds":{"databaseDetails":{"referenceType":"Environmental","environmentName":"default.cds","overrideValues":{"status":"NotSpecified","environmentVariableName":""}},"dataSources":{"warehouseitems":{"entitySetName":"lab_warehouseitems","logicalName":"lab_warehouseitem"},"warehousetransactions":{"entitySetName":"lab_warehousetransactions","logicalName":"lab_warehousetransaction"},"warehouselocations":{"entitySetName":"lab_warehouselocations","logicalName":"lab_warehouselocation"}}}}</DatabaseReferences>
+  <ConnectionReferences>{"bd10403d-2ee7-4419-879a-01daa0a17ffc":{"id":"/providers/Microsoft.PowerApps/apis/shared_lab-5fopen-20food-20facts-5f1adc4c2d36dfe779","displayName":"Open Food Facts","dataSources":["lab_5fopen_20food_20facts_5f1adc4c2d36dfe779"],"dataSets":{}}}</ConnectionReferences>
+  <DatabaseReferences>{"default.cds":{"databaseDetails":{"referenceType":"Environmental","environmentName":"default.cds","overrideValues":{"status":"NotSpecified","environmentVariableName":""}},"dataSources":{"warehouseitems":{"entitySetName":"lab_warehouseitems","logicalName":"lab_warehouseitem"},"warehousetransactions":{"entitySetName":"lab_warehousetransactions","logicalName":"lab_warehousetransaction"},"warehouselocations":{"entitySetName":"lab_warehouselocations","logicalName":"lab_warehouselocation"},"products":{"entitySetName":"lab_products","logicalName":"lab_product"}}}}</DatabaseReferences>
   <AppComponents>[]</AppComponents>
   <AppComponentDependencies>[]</AppComponentDependencies>
   <CanConsumeAppPass>1</CanConsumeAppPass>
@@ -24,12 +24,12 @@
   <AdminControlBypassConsent>0</AdminControlBypassConsent>
   <EmbeddedApp xsi:nil="true"></EmbeddedApp>
   <IntroducedVersion>1.0</IntroducedVersion>
-  <CdsDependencies>{"cdsdependencies":[{"logicalname":"lab_warehouseitem","componenttype":1},{"logicalname":"lab_warehousetransaction","componenttype":1},{"logicalname":"lab_warehouselocation","componenttype":1}]}</CdsDependencies>
+  <CdsDependencies>{"cdsdependencies":[{"logicalname":"lab_warehouseitem","componenttype":1},{"logicalname":"lab_warehousetransaction","componenttype":1},{"logicalname":"lab_warehouselocation","componenttype":1},{"logicalname":"lab_product","componenttype":1}]}</CdsDependencies>
   <IsCustomizable>1</IsCustomizable>
   <CodeAppPackageUris>
     <CodeAppPackageUri>/CanvasApps/lab_warehousepicking_CodeAppPackages/index.html_ContentType_text/html</CodeAppPackageUri>
-    <CodeAppPackageUri>/CanvasApps/lab_warehousepicking_CodeAppPackages/assets/index-DAZvjt1E.js_ContentType_application/javascript</CodeAppPackageUri>
     <CodeAppPackageUri>/CanvasApps/lab_warehousepicking_CodeAppPackages/assets/index-DkhqlnE_.css_ContentType_text/css</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/lab_warehousepicking_CodeAppPackages/assets/index-RcXCaF3_.js_ContentType_application/javascript</CodeAppPackageUri>
     <CodeAppPackageUri>/CanvasApps/lab_warehousepicking_CodeAppPackages/fonts/fabric-icons-0-467ee27f.woff_ContentType_font/woff</CodeAppPackageUri>
     <CodeAppPackageUri>/CanvasApps/lab_warehousepicking_CodeAppPackages/fonts/fabric-icons-1-4d521695.woff_ContentType_font/woff</CodeAppPackageUri>
     <CodeAppPackageUri>/CanvasApps/lab_warehousepicking_CodeAppPackages/fonts/fabric-icons-10-c4ded8e4.woff_ContentType_font/woff</CodeAppPackageUri>
