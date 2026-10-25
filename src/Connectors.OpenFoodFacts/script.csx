@@ -23,6 +23,8 @@ using Newtonsoft.Json.Linq;
 public class Script : ScriptBase
 {
     private const string UserAgent = "TALXIS-Lab-WarehousePicking/1.0 (+https://github.com/TALXIS/lab)";
+    private const string ApprovedImageHost = "images.openfoodfacts.org";
+    private const int MaxImageRedirects = 3;
 
     public override async Task<HttpResponseMessage> ExecuteAsync()
     {
@@ -72,23 +74,90 @@ public class Script : ScriptBase
         return response;
     }
 
-    // Forwards a caller-supplied absolute URL unvalidated - an open-proxy shape, deliberately
-    // left simplified here since this is a NoAuth teaching connector with low blast radius.
     private async Task<HttpResponseMessage> GetProductImageAsync()
     {
         var imageUrl = GetQueryParameter(this.Context.Request.RequestUri, "imageUrl");
         if (string.IsNullOrEmpty(imageUrl))
         {
-            var badRequest = new HttpResponseMessage(HttpStatusCode.BadRequest);
-            badRequest.Content = CreateJsonContent("{\"message\": \"imageUrl query parameter is required\"}");
-            return badRequest;
+            return CreateImageError(HttpStatusCode.BadRequest, "imageUrl query parameter is required");
         }
 
-        this.Context.Request.RequestUri = new Uri(imageUrl);
-        this.Context.Request.Headers.UserAgent.ParseAdd(UserAgent);
+        if (!Uri.TryCreate(imageUrl, UriKind.Absolute, out var imageUri) || !IsApprovedImageUri(imageUri))
+        {
+            return CreateImageError(HttpStatusCode.BadRequest,
+                "Only HTTPS image URLs from approved Open Food Facts image hosts are allowed");
+        }
 
-        return await this.Context.SendAsync(this.Context.Request, this.CancellationToken)
-            .ConfigureAwait(false);
+        var requestUri = imageUri;
+        for (var redirectCount = 0; redirectCount <= MaxImageRedirects; redirectCount++)
+        {
+            var outgoingRequest = new HttpRequestMessage(HttpMethod.Get, requestUri);
+            outgoingRequest.Headers.UserAgent.ParseAdd(UserAgent);
+            foreach (var acceptHeader in this.Context.Request.Headers.Accept)
+            {
+                outgoingRequest.Headers.Accept.Add(acceptHeader);
+            }
+
+            var response = await this.Context.SendAsync(outgoingRequest, this.CancellationToken)
+                .ConfigureAwait(false);
+
+            var responseUri = response.RequestMessage?.RequestUri;
+            if (!IsApprovedImageUri(responseUri))
+            {
+                response.Dispose();
+                outgoingRequest.Dispose();
+                return CreateImageError(HttpStatusCode.BadGateway,
+                    "Image URL redirected to an unapproved Open Food Facts image host");
+            }
+
+            var statusCode = (int)response.StatusCode;
+            if (statusCode < 300 || statusCode > 399)
+            {
+                return response;
+            }
+
+            if (redirectCount == MaxImageRedirects || response.Headers.Location == null)
+            {
+                response.Dispose();
+                outgoingRequest.Dispose();
+                return CreateImageError(HttpStatusCode.BadGateway, "Image URL returned an unsafe or excessive redirect");
+            }
+
+            var redirectUri = response.Headers.Location.IsAbsoluteUri
+                ? response.Headers.Location
+                : new Uri(responseUri, response.Headers.Location);
+            if (!IsApprovedImageUri(redirectUri))
+            {
+                response.Dispose();
+                outgoingRequest.Dispose();
+                return CreateImageError(HttpStatusCode.BadGateway,
+                    "Image URL redirected to an unapproved Open Food Facts image host");
+            }
+
+            response.Dispose();
+            outgoingRequest.Dispose();
+            requestUri = redirectUri;
+        }
+
+        return CreateImageError(HttpStatusCode.BadGateway, "Image URL returned too many redirects");
+    }
+
+    private static bool IsApprovedImageUri(Uri uri)
+    {
+        return uri != null &&
+            uri.IsAbsoluteUri &&
+            string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) &&
+            uri.IsDefaultPort &&
+            string.IsNullOrEmpty(uri.UserInfo) &&
+            string.IsNullOrEmpty(uri.Fragment) &&
+            string.Equals(uri.IdnHost, ApprovedImageHost, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static HttpResponseMessage CreateImageError(HttpStatusCode statusCode, string message)
+    {
+        var response = new HttpResponseMessage(statusCode);
+        response.Content = CreateJsonContent(new JObject { ["message"] = message }.ToString());
+        return response;
     }
 
     // System.Web.HttpUtility isn't in the custom-code namespace allowlist, so query strings are
