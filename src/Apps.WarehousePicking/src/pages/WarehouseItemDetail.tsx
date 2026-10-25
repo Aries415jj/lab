@@ -14,6 +14,9 @@ import {
   SkeletonItem,
 } from "@fluentui/react-components";
 import { ArrowLeftRegular } from "@fluentui/react-icons";
+import BarcodeScanDialog from "@/components/BarcodeScanDialog";
+import LinkedProductImage from "@/components/LinkedProductImage";
+import { Lab_productsService } from "@/generated/services/Lab_productsService";
 import type { IColumn } from "@talxis/client-libraries";
 import { RecordDetailForm } from "@/components/RecordDetailForm";
 import { RecordFormDialog } from "@/components/RecordFormDialog";
@@ -170,6 +173,16 @@ export default function WarehouseItemDetailPage() {
     },
   });
 
+  const linkedProductId = item?._lab_productid_value;
+  const { data: linkedProduct } = useQuery({
+    queryKey: ["linkedProduct", linkedProductId],
+    queryFn: async () => {
+      const result = await Lab_productsService.get(linkedProductId!);
+      return result.data;
+    },
+    enabled: !!linkedProductId,
+  });
+
   const createTxMutation = useMutation({
     mutationFn: async (values: Record<string, unknown>) => {
       return serviceResult(Lab_warehousetransactionsService.create(servicePayload({
@@ -225,6 +238,22 @@ export default function WarehouseItemDetailPage() {
             fields={itemFields}
             columnCount={3}
             title={item.lab_name ?? ""}
+            headerExtras={
+              <>
+                <BarcodeScanDialog
+                  itemId={id!}
+                  currentProductId={linkedProductId}
+                  onLinked={() => queryClient.invalidateQueries()}
+                />
+                {linkedProduct && (
+                  <div className={styles.inline} data-testid="linked-product-name">
+                    <LinkedProductImage productId={linkedProductId!} />
+                    <Body1 className={styles.muted}>Linked product:</Body1>
+                    <Body1 className={styles.name}>{linkedProduct.lab_name}</Body1>
+                  </div>
+                )}
+              </>
+            }
             onBack={() => navigate("/items")}
             lookupRecords={{ lab_locationid: locationRecords }}
             onSave={(values) => updateItemMutation.mutateAsync(values)}
